@@ -37,9 +37,22 @@ var clean = function(array){
 	return array.filter(function(item){return item !== null;});
 };
 
+var escapeChars = {
+    '&': 'amp',
+    '"': 'quot',
+    '>': 'gt',
+    '<': 'lt'
+};
+
+var escapeHtml = function(str){
+    return str.replace(/[&"><]/g, function(char){
+        return '&' + escapeChars[char] + ';';
+    });  
+};
+
 var render = function(nodes, rootId, showParent){
 	var node = nodes[rootId];
-	var content = node.content;
+	var content = escapeHtml(node.content);
 	var points = node.points || 0;
 	var permalink = '<a href="/' + rootId + '">link</a>';
 	var replylink = '<a href="/' + rootId + '/reply">reply</a>';
@@ -75,7 +88,7 @@ var server = http.createServer(function(req, res){
 
 	if (typeof nodes[rootId] === 'undefined'){
 		res.writeHead(404);
-		res.end();
+		res.end('Not found.');
 		return;
 	}else{
 		if (typeof action === 'undefined'){
@@ -94,7 +107,8 @@ var server = http.createServer(function(req, res){
 				res.writeHead(200, {'Content-Type': 'text/html'});
 				res.end(replyForm);
 			}else{
-				var newId = Math.max.apply(this, Object.keys(nodes).map(function(num){return parseInt(num);})) + 1;
+				var newId = Math.max.apply(this, Object.keys(nodes).map(function(num){return parseInt(num, 10);})) + 1;
+                nodes[rootId].children || (nodes[rootId].children = []);
 				nodes[rootId].children.push(newId);
 				nodes[newId] = { content: unescape(param).replace(/\+/g, ' ') };
 				res.writeHead(302, {'Location': '/' + rootId});
@@ -104,5 +118,4 @@ var server = http.createServer(function(req, res){
 	}
 });
 
-server.listen(1338);
-
+server.listen(process.env.C9_PORT || 1338);
